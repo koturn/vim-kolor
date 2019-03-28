@@ -59,6 +59,10 @@ function! kolor#show_palette256() abort " {{{
   echohl None
 endfunction " }}}
 
+function! kolor#rgb_to_yuv(...) abort " {{{
+  return call('s:rgb_to_yuv', call('s:to_rgb_list', a:000))
+endfunction " }}}
+
 function! kolor#rgb_to_hsv(...) abort " {{{
   return call('s:rgb_to_hsv', call('s:to_rgb_list', a:000))
 endfunction " }}}
@@ -69,6 +73,10 @@ endfunction " }}}
 
 function! kolor#rgb_to_hsi(...) abort " {{{
   return call('s:rgb_to_hsi', call('s:to_rgb_list', a:000))
+endfunction " }}}
+
+function! kolor#yuv_to_rgb(...) abort " {{{
+  return call('s:yuv_to_rgb', call('s:to_yuv_list', a:000))
 endfunction " }}}
 
 function! kolor#hsv_to_rgb(...) abort " {{{
@@ -141,6 +149,20 @@ function! s:to_rgb_string(...) abort " {{{
   return call('printf', extend(['#%02x%02x%02x'], call('s:to_rgb_list', a:000)))
 endfunction " }}}
 
+function! s:to_yuv_list(...) abort " {{{
+  if a:0 == 1
+    if type(a:1) == s:t_list
+      return [a:1[0], a:1[1], a:1[2]]
+    else
+      throw '[vim-kolor] Invalid argument type, first argument must be a list in case of single argument calling'
+    endif
+  elseif a:0 == 3
+    return [a:1, a:2, a:3]
+  else
+    throw '[vim-kolor] Invalid argument, argument must be one (list or string) or three'
+  endif
+endfunction " }}}
+
 function! s:to_hsx_list(...) abort " {{{
   if a:0 == 1 && type(a:1) == s:t_list
     let hsx = a:1
@@ -165,6 +187,14 @@ function! s:rgb_to_palette256(r, g, b) abort " {{{
     endif
   endfor
   return index
+endfunction " }}}
+
+function! s:rgb_to_yuv(r, g, b) abort " {{{
+  return map([
+        \ 0.299 * a:r + 0.587 * a:g + 0.114 * a:b,
+        \ -0.169 * a:r - 0.331 * a:g + 0.500 * a:b,
+        \ 0.500 * a:r - 0.419 * a:g - 0.081 * a:b
+        \], 'float2nr(round(v:val))')
 endfunction " }}}
 
 function! s:rgb_to_hsv(r, g, b) abort " {{{
@@ -211,6 +241,14 @@ endfunction " }}}
 
 function! s:normalize_rgb(r, g, b) abort " {{{
   return map([a:r, a:g, a:b, min([a:r, a:g, a:b]), max([a:r, a:g, a:b])], 'v:val / 255.0')
+endfunction " }}}
+
+function! s:yuv_to_rgb(y, u, v) abort " {{{
+  return map([
+        \ a:y + 1.402 * a:v,
+        \ a:y - 0.344 * a:u - 0.714 * a:v,
+        \ a:y + 1.772 * a:u
+        \], 'float2nr(round(v:val))')
 endfunction " }}}
 
 function! s:hsv_to_rgb(h, s, v) abort " {{{

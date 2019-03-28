@@ -27,6 +27,29 @@ function! s:suite.s_build_palette256() abort " {{{
   endfor
 endfunction " }}}
 
+function! s:suite.rgb_yuv() abort " {{{
+  let step = 16
+  let indices = map(range(0, 256 / step - 1), 'v:val * step')
+  for r in indices
+    for g in indices
+      for b in indices
+        let rgb = [r, g, b]
+        let yuv = kolor#rgb_to_yuv(rgb)
+        call s:assert.compare(0, '<=', yuv[0])
+        call s:assert.compare(yuv[0], '<=', 255)
+        call s:assert.compare(-128, '<=', yuv[1])
+        call s:assert.compare(yuv[1], '<=', 127)
+        call s:assert.compare(-128, '<=', yuv[2])
+        call s:assert.compare(yuv[2], '<=', 127)
+        let rgb2 = kolor#yuv_to_rgb(yuv)
+        for i in range(0, 2)
+          call s:assert.true(abs(rgb[i] - rgb2[i]) <= 1)
+        endfor
+      endfor
+    endfor
+  endfor
+endfunction " }}}
+
 function! s:suite.rgb_hsv() abort " {{{
   let step = 16
   let indices = map(range(0, 256 / step - 1), 'v:val * step')
