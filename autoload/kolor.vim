@@ -95,13 +95,89 @@ function! kolor#generate_colordef_from_jsonfile(filepath) abort " {{{
   return kolor#generate_colordef(json_decode(join(readfile(expand(a:filepath)), '')))
 endfunction " }}}
 
+function! kolor#generate_colorscheme_from_jsonfile(dstfile, filepath) abort " {{{
+  call writefile(
+        \ s:generate_colorscheme_lines(kolor#generate_colordef(json_decode(join(readfile(expand(a:filepath)), '')))),
+        \ a:dstfile)
+endfunction " }}}
+
+function! s:generate_colorscheme_lines(colordef) abort " {{{
+  let header_lines = [
+        \ 'highlight clear',
+        \ "if exists('syntax_on')",
+        \ '  syntax reset',
+        \ 'endif',
+        \ "let g:colors_name = expand('<sfile>:t:r')",
+        \ '',
+        \ "let s:gui_running = has('gui_running')",
+        \ "let s:true_colors = has('termguicolors') && &termguicolors",
+        \ ''
+        \]
+  if has_key(a:colordef, 'dark')
+    let dark_theme_lines = s:generate_colorscheme_body_lines(a:colordef.dark)
+  endif
+  if has_key(a:colordef, 'light')
+    let light_theme_lines = s:generate_colorscheme_body_lines(a:colordef.light)
+  endif
+
+  if exists('dark_theme_lines') && exists('light_theme_lines')
+    let body_lines = ["if &background ==# 'dark' \" {{{ (Dark theme)"]
+    call extend(body_lines, map(dark_theme_lines, "'  ' . v:val"))
+    call extend(body_lines, ['" }}}', "else \" {{{ (Light theme)"])
+    call extend(body_lines, map(light_theme_lines, "'  ' . v:val"))
+    call add(body_lines, 'endif " }}}')
+  elseif exists('dark_theme_lines')
+    let body_lines = dark_theme_lines
+  elseif exists('light_theme_lines')
+    let body_lines = light_theme_lines
+  else
+    throw '[vim-kolor] Cannot find theme neither "dark" or "light"'
+  endif
+
+  let g:body_lines = body_lines
+  return extend(copy(header_lines), body_lines)
+endfunction " }}}
+
+function! s:generate_colorscheme_body_lines(theme_colordef) abort " {{{
+  let lines = filter(values(a:theme_colordef), 'type(v:val) == s:t_string')
+  let term_color_dict = get(a:theme_colordef, '*Terminal', {})
+  if !empty(term_color_dict)
+    call add(lines, 'let s:terminal_ansi_colors = [' . join(map(term_color_dict.gui, 'string(v:val)'), ', ') . ']')
+    call extend(lines, [
+          \ "if has('nvim') \" {{{ Terminal colors",
+          \ '  let s:idx = 0',
+          \ '  if s:gui_running || s:true_colors',
+          \ '    for color in s:terminal_ansi_colors',
+          \ '      let g:terminal_color_{s:idx} = color',
+          \ '      let s:idx += 1',
+          \ '    endfor',
+          \ '  else',
+          \ '    for color in [' . join(term_color_dict.cui, ', ') . ']',
+          \ '      let g:terminal_color_{s:idx} = color',
+          \ '      let s:idx += 1',
+          \ '    endfor',
+          \ '  endif',
+          \ '  unlet s:idx',
+          \ "elseif (s:gui_running || s:true_colors) && exists('*term_setansicolors')",
+          \ '  let g:terminal_ansi_colors = s:terminal_ansi_colors',
+          \ 'endif',
+          \ 'unlet s:terminal_ansi_colors " }}}"'
+          \])
+  endif
+  return lines
+endfunction " }}}
+
 function! kolor#generate_colordef(colordef_dict) abort " {{{
   let palette = map(s:build_palette256(), 'printf("#%02x%02x%02x", v:val[0], v:val[1], v:val[2])')
-  return map(a:colordef_dict, 's:create_hldef_line(v:key, s:correct_hldef(v:val, palette))')
+  let colordef = {}
+  for theme in filter(['dark', 'light'], 'has_key(a:colordef_dict, v:val)')
+    let colordef[theme] = map(a:colordef_dict[theme], 's:generate_hldef_string(v:key, s:correct_hldef(v:val, palette))')
+  endfor
+  return colordef
 endfunction " }}}
 
 function! kolor#echo(msg, fg, ...) abort " {{{
-  execute s:create_hldef_line('KolorEchoTmp', s:correct_hldef({
+  execute s:generate_hldef_string('KolorEchoTmp', s:correct_hldef({
         \ 'guifg': s:to_rgb_string(a:fg),
         \ 'guibg': a:0 > 0 ? s:to_rgb_string(a:1) : '#000000'
         \}, s:build_palette256()))
@@ -111,7 +187,7 @@ function! kolor#echo(msg, fg, ...) abort " {{{
 endfunction " }}}
 
 function! kolor#echonr(msg, fg, ...) abort " {{{
-  execute s:create_hldef_line('KolorEchoTmp', s:correct_hldef({
+  execute s:generate_hldef_string('KolorEchoTmp', s:correct_hldef({
         \ 'ctermfg': a:fg,
         \ 'ctermbg': a:0 > 0 ? a:1 : 0
         \}, s:build_palette256()))
@@ -137,6 +213,8 @@ function! s:to_rgb_list(...) abort " {{{
         throw '[vim-kolor] Invalid RGB string, RGB string length must be three or six in hex form: ' . str
       endif
       return strlen == 3 ? map([str[0], str[1], str[2]], 'str2nr(v:val . v:val, 16)') : map([str[: 1], str[2 : 3], str[4 : ]], 'str2nr(v:val, 16)')
+    else
+      throw '[vim-kolor] Invalid argument type, first argument must be a integer, list or color string in case of single argument calling'
     endif
   elseif a:0 == 3
     return [a:1, a:2, a:3]
@@ -325,18 +403,32 @@ function! s:get_attr(hldef, key) abort " {{{
   return type(attr) == s:t_string ? [attr] : attr
 endfunction " }}}
 
-function! s:create_hldef_line(hlgroup, hldef) abort " {{{
-  let line = printf('highlight! %s ctermfg=%s ctermbg=%s guifg=%s guibg=%s', a:hlgroup, a:hldef.ctermfg, a:hldef.ctermbg, a:hldef.guifg, a:hldef.guibg)
-  if has_key(a:hldef, 'cui')
-    let line .= printf(' cui=%s', join(a:hldef.cui, ','))
+function! s:generate_hldef_string(hlgroup, hldef) abort " {{{
+  if a:hlgroup ==# '*Terminal'
+    if !has_key(a:hldef, 'cui') && has_key(a:hldef, 'gui')
+      let a:hldef.cui = map(copy(a:hldef.gui), 'kolor#rgb_to_palette256(v:val)')
+    endif
+    if !has_key(a:hldef, 'ctermbg') && has_key(a:hldef, 'guibg')
+      let a:hldef.gui = map(copy(a:hldef.cui), 's:to_rgb_string(a:palette[str2nr(v:val)])')
+    endif
+    return {
+          \ 'gui': a:hldef.gui,
+          \ 'cui': a:hldef.cui
+          \}
+  elseif has_key(a:hldef, 'link')
+    return 'hi! link ' . a:hlgroup . ' ' . a:hldef.link
+  else
+    let line = 'hi! ' . a:hlgroup
+    let fgbgs = map(filter(['ctermfg', 'ctermbg', 'guifg', 'guibg'], 'has_key(a:hldef, v:val)'), 'v:val . "=" . a:hldef[v:val]')
+    if !empty(fgbgs)
+      let line .= ' ' . join(fgbgs)
+    endif
+    let attrs = map(filter(['cui', 'gui', 'term'], 'has_key(a:hldef, v:val)'), 'v:val . "=" . join(a:hldef[v:val], ",")')
+    if !empty(attrs)
+      let line .= ' ' . join(attrs)
+    endif
+    return line
   endif
-  if has_key(a:hldef, 'gui')
-    let line .= printf(' gui=%s', join(a:hldef.gui, ','))
-  endif
-  if has_key(a:hldef, 'term')
-    let line .= printf(' term=%s', join(a:hldef.term, ','))
-  endif
-  return line
 endfunction " }}}
 
 function! s:build_palette256() abort " {{{
