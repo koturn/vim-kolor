@@ -29,7 +29,9 @@ let s:base16_values = [
       \ [0x00, 0xFF, 0xFF],
       \ [0xFF, 0xFF, 0xFF]]
 let s:header_lines = [
-      \ 'highlight clear',
+      \ "if !has('vim_starting')",
+      \ '  hi clear',
+      \ 'endif',
       \ "if exists('syntax_on')",
       \ '  syntax reset',
       \ 'endif',
@@ -39,10 +41,19 @@ let s:header_lines = [
       \ "let s:true_colors = has('termguicolors') && &termguicolors",
       \ ''
       \]
+let s:attrkey_attr_dict = {
+      \ 'bold': 'bold',
+      \ 'underline': 'underline',
+      \ 'undercurl': 'undercurl',
+      \ 'strike': 'strikethrough',
+      \ 'reverse': 'reverse',
+      \ 'italic': 'italic',
+      \ 'standout': 'standout',
+      \}
 let s:t_number = type(0)
 let s:t_list = type([])
 let s:t_string = type('')
- " }}}
+" }}}
 
 function! kolor#palette256_to_rgb(esc) abort " {{{
   return s:palette256_to_rgb(a:esc)
@@ -112,6 +123,11 @@ function! kolor#generate_colorscheme_from_jsonfile(dstfile, filepath) abort " {{
         \ a:dstfile)
 endfunction " }}}
 
+function! kolor#export_current_colorscheme_to_jsonfile(filename) " {{{
+  call writefile([json_encode(s:extract_current_highlight())], a:filename)
+endfunction " }}}
+
+
 function! s:generate_colorscheme_lines(colordef) abort " {{{
   if has_key(a:colordef, 'dark')
     let dark_theme_lines = s:generate_colorscheme_body_lines(a:colordef.dark)
@@ -121,20 +137,31 @@ function! s:generate_colorscheme_lines(colordef) abort " {{{
   endif
 
   if exists('dark_theme_lines') && exists('light_theme_lines')
+    let header_lines = copy(s:header_lines)
     let body_lines = ["if &background ==# 'dark' \" {{{ (Dark theme)"]
     call extend(body_lines, map(dark_theme_lines, "'  ' . v:val"))
     call extend(body_lines, ['" }}}', "else \" {{{ (Light theme)"])
     call extend(body_lines, map(light_theme_lines, "'  ' . v:val"))
     call add(body_lines, 'endif " }}}')
   elseif exists('dark_theme_lines')
+    let header_lines = extend(s:generate_set_bg_lines('dark'), copy(s:header_lines))
     let body_lines = dark_theme_lines
   elseif exists('light_theme_lines')
+    let header_lines = extend(s:generate_set_bg_lines('light'), copy(s:header_lines))
     let body_lines = light_theme_lines
   else
     throw '[vim-kolor] Cannot find theme neither "dark" or "light"'
   endif
 
-  return extend(copy(s:header_lines), body_lines)
+  return extend(header_lines, body_lines)
+endfunction " }}}
+
+function! s:generate_set_bg_lines(bg) abort " {{{
+  return [
+        \ "if &background !=# '" . a:bg . "'",
+        \ '  set background=' . a:bg,
+        \ 'endif'
+        \]
 endfunction " }}}
 
 function! s:generate_colorscheme_body_lines(theme_colordef) abort " {{{
@@ -453,11 +480,7 @@ function! s:generate_hldef_string(hlgroup, hldef) abort " {{{
   if !empty(fgbgs)
     let line .= ' ' . join(fgbgs)
   endif
-  let attrs = map(filter(['cterm', 'gui', 'term'], 'has_key(a:hldef, v:val)'), 'v:val . "=" . join(a:hldef[v:val], ",")')
-  if !empty(attrs)
-    let line .= ' ' . join(attrs)
-  endif
-  return line
+  return line . ' ' . join(map(['cterm', 'gui', 'term'], "v:val . '=' . (has_key(a:hldef, v:val) ? join(a:hldef[v:val], ',') : 'NONE')"))
 endfunction " }}}
 
 function! s:build_palette256() abort " {{{
@@ -476,6 +499,37 @@ function! s:_palette256_to_rgb2(esc) abort " {{{
 endfunction " }}}
 
 let s:palette256_to_rgb = function('s:_palette256_to_rgb1')
+
+
+function! s:extract_current_highlight() abort " {{{
+  let hldef = {}
+  for name1 in getcompletion('', 'highlight')
+    let id1 = hlID(name1)
+    let id2 = synIDtrans(id1)
+    let name2 = synIDattr(id2, 'name')
+    if id1 != id2
+      call extend(hldef, {name1: {'link': name2}})
+      continue
+    endif
+    let def = {}
+    for mode in ['cterm', 'gui', 'term']
+      for what in ['fg#', 'bg#']
+        let color = synIDattr(id1, what, mode)
+        if color !=# ''
+          call extend(def, {(mode . what[: 1]): color})
+        endif
+      endfor
+      let attrs = map(filter(['bold', 'italic', 'reverse', 'standout', 'underline', 'undercurl', 'strike'], "synIDattr(id1, v:val, mode) ==# '1'"), 's:attrkey_attr_dict[v:val]')
+      if !empty(attrs)
+        call extend(def, {mode: attrs})
+      endif
+    endfor
+    if !empty(def)
+      call extend(hldef, {name1: def})
+    endif
+  endfor
+  return {&bg: hldef}
+endfunction " }}}
 
 
 let &cpo = s:save_cpo
