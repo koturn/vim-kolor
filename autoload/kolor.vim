@@ -170,7 +170,7 @@ function! s:generate_colorscheme_body_lines(theme_colordef) abort " {{{
     call remove(a:theme_colordef, 'Normal')
   endif
   for kind in ['def', 'link']
-    call extend(lines, map(filter(values(a:theme_colordef), "v:val.kind ==# kind"), 'v:val.def'))
+    call extend(lines, sort(map(filter(values(a:theme_colordef), "v:val.kind ==# kind"), 'v:val.def')))
     call add(lines, '')
   endfor
   if has_key(a:theme_colordef, '*Terminal')
@@ -475,12 +475,16 @@ function! s:generate_hldef_dict(hlgroup, hldef) abort " {{{
 endfunction " }}}
 
 function! s:generate_hldef_string(hlgroup, hldef) abort " {{{
-  let line = 'hi! ' . a:hlgroup
-  let fgbgs = map(filter(['ctermfg', 'ctermbg', 'guifg', 'guibg'], 'has_key(a:hldef, v:val)'), 'v:val . "=" . a:hldef[v:val]')
-  if !empty(fgbgs)
-    let line .= ' ' . join(fgbgs)
-  endif
-  return line . ' ' . join(map(['cterm', 'gui', 'term'], "v:val . '=' . (has_key(a:hldef, v:val) ? join(a:hldef[v:val], ',') : 'NONE')"))
+  return 'hi! ' . a:hlgroup . ' ' . join(map(['cterm', 'gui'], 's:generate_hldef_string_part(a:hldef, v:val)')) . ' ' . s:generate_hldef_string_attr_part(a:hldef, 'term')
+endfunction " }}}
+
+function! s:generate_hldef_string_part(hldef, target) abort " {{{
+  let fgbgs = map(filter([a:target . 'fg', a:target . 'bg'], 'has_key(a:hldef, v:val)'), 'v:val . "=" . a:hldef[v:val]')
+  return (empty(fgbgs) ? '' : (join(fgbgs) . ' ')) . s:generate_hldef_string_attr_part(a:hldef, a:target)
+endfunction " }}}
+
+function! s:generate_hldef_string_attr_part(hldef, target) abort " {{{
+  return a:target . '=' . (has_key(a:hldef, a:target) ? join(a:hldef[a:target], ',') : 'NONE')
 endfunction " }}}
 
 function! s:build_palette256() abort " {{{
