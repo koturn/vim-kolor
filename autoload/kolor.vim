@@ -139,9 +139,9 @@ function! s:generate_colorscheme_lines(colordef) abort " {{{
   if exists('dark_theme_lines') && exists('light_theme_lines')
     let header_lines = copy(s:header_lines)
     let body_lines = ["if &background ==# 'dark' \" {{{ (Dark theme)"]
-    call extend(body_lines, map(dark_theme_lines, "'  ' . v:val"))
+    call extend(body_lines, map(dark_theme_lines, "v:val ==# '' ? '' : ('  ' . v:val)"))
     call extend(body_lines, ['" }}}', "else \" {{{ (Light theme)"])
-    call extend(body_lines, map(light_theme_lines, "'  ' . v:val"))
+    call extend(body_lines, map(light_theme_lines, "v:val ==# '' ? '' : ('  ' . v:val)"))
     call add(body_lines, 'endif " }}}')
   elseif exists('dark_theme_lines')
     let header_lines = extend(s:generate_set_bg_lines('dark'), copy(s:header_lines))
@@ -228,7 +228,6 @@ function! kolor#echonr(msg, fg, ...) abort " {{{
   echo a:msg
   echohl None
 endfunction " }}}
-
 
 function! s:to_rgb_list(...) abort " {{{
   if a:0 == 1
