@@ -32,7 +32,7 @@ let s:header_lines = [
       \ "if !has('vim_starting')",
       \ '  hi clear',
       \ 'endif',
-      \ "if exists('syntax_on')",
+      \ "if exists('g:syntax_on')",
       \ '  syntax reset',
       \ 'endif',
       \ "let g:colors_name = expand('<sfile>:t:r')",
@@ -139,21 +139,21 @@ function! s:generate_colorscheme_lines(colordef) abort " {{{
   if exists('dark_theme_lines') && exists('light_theme_lines')
     let header_lines = copy(s:header_lines)
     let body_lines = ["if &background ==# 'dark' \" {{{ (Dark theme)"]
-    call extend(body_lines, map(dark_theme_lines, "v:val ==# '' ? '' : ('  ' . v:val)"))
-    call extend(body_lines, ['" }}}', "else \" {{{ (Light theme)"])
-    call extend(body_lines, map(light_theme_lines, "v:val ==# '' ? '' : ('  ' . v:val)"))
-    call add(body_lines, 'endif " }}}')
+          \ + map(dark_theme_lines, "v:val ==# '' ? '' : ('  ' . v:val)")
+          \ + ['" }}}', "else \" {{{ (Light theme)"]
+          \ + map(light_theme_lines, "v:val ==# '' ? '' : ('  ' . v:val)")
+          \ + ['endif " }}}']
   elseif exists('dark_theme_lines')
-    let header_lines = extend(s:generate_set_bg_lines('dark'), copy(s:header_lines))
+    let header_lines = s:generate_set_bg_lines('dark') + s:header_lines
     let body_lines = dark_theme_lines
   elseif exists('light_theme_lines')
-    let header_lines = extend(s:generate_set_bg_lines('light'), copy(s:header_lines))
+    let header_lines = s:generate_set_bg_lines('light') + s:header_lines
     let body_lines = light_theme_lines
   else
     throw '[vim-kolor] Cannot find theme neither "dark" or "light"'
   endif
 
-  return extend(header_lines, body_lines)
+  return header_lines + body_lines
 endfunction " }}}
 
 function! s:generate_set_bg_lines(bg) abort " {{{
@@ -170,32 +170,31 @@ function! s:generate_colorscheme_body_lines(theme_colordef) abort " {{{
     call remove(a:theme_colordef, 'Normal')
   endif
   for kind in ['def', 'link']
-    call extend(lines, sort(map(filter(values(a:theme_colordef), "v:val.kind ==# kind"), 'v:val.def')))
-    call add(lines, '')
+    let lines += sort(map(filter(values(a:theme_colordef), "v:val.kind ==# kind"), 'v:val.def')) + ['']
   endfor
   if has_key(a:theme_colordef, '*Terminal')
     let term_color_dict = a:theme_colordef['*Terminal'].def
-    call add(lines, 'let s:terminal_ansi_colors = [' . join(map(term_color_dict.gui, 'string(v:val)'), ', ') . ']')
-    call extend(lines, [
-          \ "if has('nvim') \" {{{ Terminal colors",
-          \ '  let s:idx = 0',
-          \ '  if s:gui_running || s:true_colors',
-          \ '    for color in s:terminal_ansi_colors',
-          \ '      let g:terminal_color_{s:idx} = color',
-          \ '      let s:idx += 1',
-          \ '    endfor',
-          \ '  else',
-          \ '    for color in [' . join(term_color_dict.cui, ', ') . ']',
-          \ '      let g:terminal_color_{s:idx} = color',
-          \ '      let s:idx += 1',
-          \ '    endfor',
-          \ '  endif',
-          \ '  unlet s:idx',
-          \ "elseif (s:gui_running || s:true_colors) && exists('*term_setansicolors')",
-          \ '  let g:terminal_ansi_colors = s:terminal_ansi_colors',
-          \ 'endif',
-          \ 'unlet s:terminal_ansi_colors " }}}"'
-          \])
+    let lines += ['let s:terminal_ansi_colors = [' . join(map(term_color_dict.gui, 'string(v:val)'), ', ') . ']']
+          \ + [
+          \   "if has('nvim') \" {{{ Terminal colors",
+          \   '  let s:idx = 0',
+          \   '  if s:gui_running || s:true_colors',
+          \   '    for color in s:terminal_ansi_colors',
+          \   '      let g:terminal_color_{s:idx} = color',
+          \   '      let s:idx += 1',
+          \   '    endfor',
+          \   '  else',
+          \   '    for color in [' . join(term_color_dict.cui, ', ') . ']',
+          \   '      let g:terminal_color_{s:idx} = color',
+          \   '      let s:idx += 1',
+          \   '    endfor',
+          \   '  endif',
+          \   '  unlet s:idx',
+          \   "elseif (s:gui_running || s:true_colors) && exists('*term_setansicolors')",
+          \   '  let g:terminal_ansi_colors = s:terminal_ansi_colors',
+          \   'endif',
+          \   'unlet s:terminal_ansi_colors " }}}'
+          \]
   endif
   return lines
 endfunction " }}}
@@ -256,7 +255,7 @@ function! s:to_rgb_list(...) abort " {{{
 endfunction " }}}
 
 function! s:to_rgb_string(...) abort " {{{
-  return call('printf', extend(['#%02x%02x%02x'], call('s:to_rgb_list', a:000)))
+  return call('printf', ['#%02x%02x%02x'] + call('s:to_rgb_list', a:000))
 endfunction " }}}
 
 function! s:to_yuv_list(...) abort " {{{
