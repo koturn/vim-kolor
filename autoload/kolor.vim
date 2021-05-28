@@ -521,7 +521,7 @@ function! s:extract_current_highlight() abort " {{{
           call extend(def, {(mode . what[: 1]): color})
         endif
       endfor
-      let attrs = map(filter(['bold', 'italic', 'reverse', 'standout', 'underline', 'undercurl', 'strike'], "synIDattr(id1, v:val, mode) ==# '1'"), 's:attrkey_attr_dict[v:val]')
+      let attrs = map(filter(['bold', 'italic', 'reverse', 'standout', 'underline', 'undercurl', 'strike'], "synIDattr(id1, v:val, mode) is# '1'"), 's:attrkey_attr_dict[v:val]')
       if !empty(attrs)
         call extend(def, {mode: attrs})
       endif
