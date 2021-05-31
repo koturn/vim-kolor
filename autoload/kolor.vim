@@ -93,15 +93,6 @@ let s:header_lines = [
       \ "let s:true_colors = has('termguicolors') && &termguicolors",
       \ ''
       \]
-let s:attrkey_attr_dict = {
-      \ 'bold': 'bold',
-      \ 'underline': 'underline',
-      \ 'undercurl': 'undercurl',
-      \ 'strike': 'strikethrough',
-      \ 'reverse': 'reverse',
-      \ 'italic': 'italic',
-      \ 'standout': 'standout',
-      \}
 let s:t_number = type(0)
 let s:t_list = type([])
 let s:t_string = type('')
@@ -557,6 +548,27 @@ endfunction " }}}
 let s:palette256_to_rgb = function('s:_palette256_to_rgb1')
 
 
+function! s:_get_available_term_attr1() abort " {{{
+  let attrs = []
+  for attr in ['bold', 'italic', 'reverse', 'standout', 'underline', 'undercurl', 'strikethrough']
+    try
+      execute 'hi! KolorTermDummy term=' . attr
+      attrs += [attr]
+    catch
+    endtry
+  endfor
+  hi! clear KolorTermDummy
+  let [s:available_term_attrs, s:get_available_term_attr] = [attrs, function('s:_get_available_term_attr2')]
+  return copy(s:available_term_attrs)
+endfunction " }}}
+
+function! s:_get_available_term_attr2() abort " {{{
+  return copy(s:available_term_attrs)
+endfunction " }}}
+
+let s:get_available_term_attr = function('s:_get_available_term_attr1')
+
+
 function! s:extract_current_highlight() abort " {{{
   let hldef = {}
   for name1 in s:get_all_highlight_names()
@@ -575,7 +587,7 @@ function! s:extract_current_highlight() abort " {{{
           call extend(def, {(mode . what[: 1]): color})
         endif
       endfor
-      let attrs = map(filter(['bold', 'italic', 'reverse', 'standout', 'underline', 'undercurl', 'strike'], "synIDattr(id1, v:val, mode) is# '1'"), 's:attrkey_attr_dict[v:val]')
+      let attrs = map(filter(s:get_available_term_attr(), "synIDattr(id1, v:val, mode) is# '1'"), 'v:val')
       if !empty(attrs)
         call extend(def, {mode: attrs})
       endif
