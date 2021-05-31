@@ -140,31 +140,21 @@ function! s:suite.write_colorscheme03() abort " {{{
   if !isdirectory(csdir)
     call mkdir(csdir)
   endif
-  let default_colorname_list = [
-        \ 'blue',
-        \ 'darkblue',
-        \ 'default',
-        \ 'delek',
-        \ 'desert',
-        \ 'elflord',
-        \ 'evening',
-        \ 'industry',
-        \ 'koehler',
-        \ 'morning',
-        \ 'murphy',
-        \ 'pablo',
-        \ 'peachpuff',
-        \ 'ron',
-        \ 'shine',
-        \ 'slate',
-        \ 'torte',
-        \ 'zellner'
-        \]
-  for colorname in default_colorname_list
-    execute 'colorscheme' colorname
-    let [jsonfile, vimfile] = [colorname . '2.json', colorname . '2.vim']
+  for color_name in s:get_all_color_names()
+    execute 'colorscheme' color_name
+    let [jsonfile, vimfile] = [color_name . '2.json', color_name . '2.vim']
     call kolor#export_current_colorscheme_to_jsonfile(jsonfile)
     call kolor#write_colorscheme_from_jsonfile(jsonfile, csdir . '/' . vimfile)
-    execute 'colorscheme' colorname . '2'
+    execute 'colorscheme' color_name . '2'
   endfor
 endfunction " }}}
+
+if exists('*getcompletion')
+  function! s:get_all_color_names() abort " {{{
+    return getcompletion('', 'color')
+  endfunction " }}}
+else
+  function! s:get_all_color_names() abort " {{{
+    return sort(map(split(globpath(&runtimepath, 'colors/*.vim'), "\n"), 'fnamemodify(v:val, ":t:r")'))
+  endfunction " }}}
+endif
