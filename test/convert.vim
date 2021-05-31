@@ -4,6 +4,7 @@ let s:assert = themis#helper('assert')
 let s:scope = themis#helper('scope')
 " }}}
 
+let s:script_dir = expand('<sfile>:p:h')
 let s:au_local_funcs = s:scope.funcs('autoload/kolor.vim')
 
 function! s:suite.s_to_rgb_list() abort " {{{
@@ -110,5 +111,60 @@ function! s:suite.rgb_hsi() abort " {{{
         endfor
       endfor
     endfor
+  endfor
+endfunction " }}}
+
+function! s:suite.write_colorscheme01() abort " {{{
+  let csdir = s:script_dir . '/../colors'
+  if !isdirectory(csdir)
+    call mkdir(csdir)
+  endif
+  call kolor#export_current_colorscheme_to_jsonfile('test1.json')
+  call kolor#write_colorscheme_from_jsonfile('test1.json', csdir . '/test1.vim')
+  colorscheme test1
+endfunction " }}}
+
+function! s:suite.write_colorscheme02() abort " {{{
+  let csdir = s:script_dir . '/../colors'
+  if !isdirectory(csdir)
+    call mkdir(csdir)
+  endif
+  call kolor#export_current_colorscheme_to_jsonfile('test2.json')
+  call kolor#write_colorscheme_from_jsonfile('test2.json')
+  call rename('test2.vim', csdir . '/test2.vim')
+  colorscheme test2
+endfunction " }}}
+
+function! s:suite.write_colorscheme03() abort " {{{
+  let csdir = s:script_dir . '/../colors'
+  if !isdirectory(csdir)
+    call mkdir(csdir)
+  endif
+  let default_colorname_list = [
+        \ 'blue',
+        \ 'darkblue',
+        \ 'default',
+        \ 'delek',
+        \ 'desert',
+        \ 'elflord',
+        \ 'evening',
+        \ 'industry',
+        \ 'koehler',
+        \ 'morning',
+        \ 'murphy',
+        \ 'pablo',
+        \ 'peachpuff',
+        \ 'ron',
+        \ 'shine',
+        \ 'slate',
+        \ 'torte',
+        \ 'zellner'
+        \]
+  for colorname in default_colorname_list
+    execute 'colorscheme' colorname
+    let [jsonfile, vimfile] = [colorname . '2.json', colorname . '2.vim']
+    call kolor#export_current_colorscheme_to_jsonfile(jsonfile)
+    call kolor#write_colorscheme_from_jsonfile(jsonfile, csdir . '/' . vimfile)
+    execute 'colorscheme' colorname . '2'
   endfor
 endfunction " }}}

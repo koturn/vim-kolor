@@ -433,7 +433,7 @@ endfunction " }}}
 
 function! s:to_term_color(gui_color) abort " {{{
   try
-    return kolor#rgb_to_palette256(a:gui_color)
+    return kolor#rgb_to_palette256(get(s:get_guicolor_name_dict(), tolower(a:gui_color), a:gui_color))
   catch
     return a:gui_color
   endtry
@@ -533,6 +533,34 @@ function! s:extract_current_highlight() abort " {{{
     endif
   endfor
   return {&bg: hldef}
+endfunction " }}}
+
+
+function! s:_get_guicolor_name_dict1() abort " {{{
+  let [s:guicolor_name_dict, s:get_guicolor_name_dict] = [s:read_rgbtxt(), function('s:_get_guicolor_name_dict2')]
+  return copy(s:guicolor_name_dict)
+endfunction " }}}
+
+function! s:_get_guicolor_name_dict2() abort " {{{
+  return copy(s:guicolor_name_dict)
+endfunction " }}}
+
+let s:get_guicolor_name_dict = function('s:_get_guicolor_name_dict1')
+
+
+function! s:read_rgbtxt(...) abort " {{{
+  let filepath = a:0 > 0 ? a:1 : get(g:, 'rgb_file', $VIMRUNTIME . '/rgb.txt')
+  let guicolor_name_dict = {}
+  for name_rgb_dict in map(
+        \ filter(
+        \   map(
+        \     readfile(filepath),
+        \     "matchlist(v:val, '^\\s*\\(\\<\\d\\{,3\\}\\)\\s\\+\\(\\<\\d\\{,3\\}\\)\\s\\+\\(\\<\\d\\{,3\\}\\)\\s\\+\\(.*\\)\\s*$')"),
+        \   "match(v:val[4], '\\s') == -1"),
+        \ "{tolower(v:val[4]): map(v:val[1 : 3], 'str2nr(v:val)')}")
+    call extend(guicolor_name_dict, name_rgb_dict, 'error')
+  endfor
+  return guicolor_name_dict
 endfunction " }}}
 
 
