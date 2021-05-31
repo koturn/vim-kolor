@@ -117,14 +117,16 @@ function! kolor#generate_colordef_from_jsonfile(filepath) abort " {{{
   return kolor#generate_colordef(json_decode(join(readfile(expand(a:filepath)), '')))
 endfunction " }}}
 
-function! kolor#generate_colorscheme_from_jsonfile(dstfile, filepath) abort " {{{
+function! kolor#write_colorscheme_from_jsonfile(filepath, ...) abort " {{{
+  let dstfile = a:0 > 0 ? a:1 : (fnamemodify(a:filepath, ':r') . '.vim')
   call writefile(
         \ s:generate_colorscheme_lines(kolor#generate_colordef(json_decode(join(readfile(expand(a:filepath)), '')))),
-        \ a:dstfile)
+        \ dstfile)
 endfunction " }}}
 
-function! kolor#export_current_colorscheme_to_jsonfile(filename) " {{{
-  call writefile([json_encode(s:extract_current_highlight())], a:filename)
+function! kolor#export_current_colorscheme_to_jsonfile(...) " {{{
+  let filepath = a:0 > 0 ? a:1 : (fnameescape(g:colors_name) . '.json')
+  call writefile([json_encode(s:extract_current_highlight())], filepath)
 endfunction " }}}
 
 
