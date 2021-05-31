@@ -507,7 +507,7 @@ let s:palette256_to_rgb = function('s:_palette256_to_rgb1')
 
 function! s:extract_current_highlight() abort " {{{
   let hldef = {}
-  for name1 in getcompletion('', 'highlight')
+  for name1 in s:get_all_highlight_names()
     let id1 = hlID(name1)
     let id2 = synIDtrans(id1)
     let name2 = synIDattr(id2, 'name')
@@ -534,6 +534,20 @@ function! s:extract_current_highlight() abort " {{{
   endfor
   return {&bg: hldef}
 endfunction " }}}
+
+
+if exists('*getcompletion')
+  function! s:get_all_highlight_names() abort " {{{
+    return getcompletion('', 'highlight')
+  endfunction " }}}
+else
+  function! s:get_all_highlight_names() abort " {{{
+    redir => str
+    execute 'silent! highlight'
+    redir END
+    return sort(map(split(str, "\n"), 'split(v:val, "\\s\\+")[0]'))
+  endfunction " }}}
+endif
 
 
 function! s:_get_guicolor_name_dict1() abort " {{{
