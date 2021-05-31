@@ -8,7 +8,8 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
- " {{{ Constants
+" {{{ Constants
+let s:plugin_base_dir = expand('<sfile>:p:h') . '/..'
 let s:pi = acos(-1)
 let s:ccvalues = [0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF]
 let s:base16_values = [
@@ -28,58 +29,6 @@ let s:base16_values = [
       \ [0xFF, 0x00, 0xFF],
       \ [0x00, 0xFF, 0xFF],
       \ [0xFF, 0xFF, 0xFF]]
-let s:wellknown_guicolor_names = {
-      \ 'black': [0x00, 0x00, 0x00],
-      \ 'blue': [0x00, 0x00, 0xFF],
-      \ 'brown': [0xA5, 0x2A, 0x2A],
-      \ 'cyan': [0x00, 0xFF, 0xFF],
-      \ 'darkblue': [0x00, 0x00, 0x8B],
-      \ 'darkcyan': [0x00, 0x8B, 0x8B],
-      \ 'darkgray': [0xA9, 0xA9, 0xA9],
-      \ 'darkgreen': [0x00, 0x64, 0x00],
-      \ 'darkgrey': [0xA9, 0xA9, 0xA9],
-      \ 'darkmagenta': [0x8B, 0x00, 0x8B],
-      \ 'darkred': [0x8B, 0x00, 0x00],
-      \ 'darkyellow': [0x8B, 0x8B, 0x00],
-      \ 'gray': [0xBE, 0xBE, 0xBE],
-      \ 'gray10': [0x1A, 0x1A, 0x1A],
-      \ 'gray20': [0x33, 0x33, 0x33],
-      \ 'gray30': [0x4D, 0x4D, 0x4D],
-      \ 'gray40': [0x66, 0x66, 0x66],
-      \ 'gray50': [0x7F, 0x7F, 0x7F],
-      \ 'gray60': [0x99, 0x99, 0x99],
-      \ 'gray70': [0xB3, 0xB3, 0xB3],
-      \ 'gray80': [0xCC, 0xCC, 0xCC],
-      \ 'gray90': [0xE5, 0xE5, 0xE5],
-      \ 'green': [0x00, 0xFF, 0x00],
-      \ 'grey': [0xBE, 0xBE, 0xBE],
-      \ 'grey10': [0x1A, 0x1A, 0x1A],
-      \ 'grey20': [0x33, 0x33, 0x33],
-      \ 'grey30': [0x4D, 0x4D, 0x4D],
-      \ 'grey40': [0x66, 0x66, 0x66],
-      \ 'grey50': [0x7F, 0x7F, 0x7F],
-      \ 'grey60': [0x99, 0x99, 0x99],
-      \ 'grey70': [0xB3, 0xB3, 0xB3],
-      \ 'grey80': [0xCC, 0xCC, 0xCC],
-      \ 'grey90': [0xE5, 0xE5, 0xE5],
-      \ 'lightblue': [0xAD, 0xD8, 0xE6],
-      \ 'lightcyan': [0xE0, 0xFF, 0xFF],
-      \ 'lightgray': [0xD3, 0xD3, 0xD3],
-      \ 'lightgreen': [0x90, 0xEE, 0x90],
-      \ 'lightgrey': [0xD3, 0xD3, 0xD3],
-      \ 'lightmagenta': [0xFF, 0x8B, 0xFF],
-      \ 'lightred': [0xFF, 0x8B, 0x8B],
-      \ 'lightyellow': [0xFF, 0xFF, 0xE0],
-      \ 'magenta': [0xFF, 0x00, 0xFF],
-      \ 'orange': [0xFF, 0xA5, 0x00],
-      \ 'purple': [0xA0, 0x20, 0xF0],
-      \ 'red': [0xFF, 0x00, 0x00],
-      \ 'seagreen': [0x2E, 0x8B, 0x57],
-      \ 'slateblue': [0x6A, 0x5A, 0xCD],
-      \ 'violet': [0xEE, 0x82, 0xEE],
-      \ 'white': [0xFF, 0xFF, 0xFF],
-      \ 'yellow': [0xFF, 0xFF, 0x00]
-      \}
 let s:header_lines = [
       \ "if !has('vim_starting')",
       \ '  hi clear',
@@ -475,8 +424,9 @@ function! s:correct_hldef(hldef, palette) abort " {{{
 endfunction " }}}
 
 function! s:to_term_color(gui_color) abort " {{{
+  let guicolor_name_dict = s:get_guicolor_name_dict()
   try
-    return kolor#rgb_to_palette256(get(s:get_guicolor_name_dict(), tolower(a:gui_color), a:gui_color))
+    return kolor#rgb_to_palette256(get(guicolor_name_dict, tolower(a:gui_color), a:gui_color))
   catch
     return a:gui_color
   endtry
@@ -615,12 +565,7 @@ endif
 
 
 function! s:_get_guicolor_name_dict1() abort " {{{
-  try
-    let s:guicolor_name_dict = s:read_rgbtxt()
-  catch
-    let s:guicolor_name_dict = s:wellknown_guicolor_names
-  endtry
-  let s:get_guicolor_name_dict = function('s:_get_guicolor_name_dict2')
+  let [s:guicolor_name_dict, s:get_guicolor_name_dict] = [s:read_rgbtxt(), function('s:_get_guicolor_name_dict2')]
   return copy(s:guicolor_name_dict)
 endfunction " }}}
 
@@ -632,7 +577,8 @@ let s:get_guicolor_name_dict = function('s:_get_guicolor_name_dict1')
 
 
 function! s:read_rgbtxt(...) abort " {{{
-  let filepath = a:0 > 0 ? a:1 : get(g:, 'rgb_file', $VIMRUNTIME . '/rgb.txt')
+  let runtime_rgbtxt = $VIMRUNTIME . '/rgb.txt'
+  let filepath = a:0 > 0 ? a:1 : get(g:, 'rgb_file', filereadable(runtime_rgbtxt) ? runtime_rgbtxt : s:plugin_base_dir . '/misc/rgb.txt')
   let guicolor_name_dict = {}
   for name_rgb_dict in map(
         \ filter(
