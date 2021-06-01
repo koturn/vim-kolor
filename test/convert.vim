@@ -122,6 +122,8 @@ function! s:suite.write_colorscheme01() abort " {{{
   call kolor#export_current_colorscheme_to_jsonfile('test1.json')
   call kolor#write_colorscheme_from_jsonfile('test1.json', csdir . '/test1.vim')
   colorscheme test1
+  call delete('test1.json')
+  call delete(csdir . '/test1.vim')
 endfunction " }}}
 
 function! s:suite.write_colorscheme02() abort " {{{
@@ -133,6 +135,8 @@ function! s:suite.write_colorscheme02() abort " {{{
   call kolor#write_colorscheme_from_jsonfile('test2.json')
   call rename('test2.vim', csdir . '/test2.vim')
   colorscheme test2
+  call delete('test2.json')
+  call delete(csdir . '/test2.vim')
 endfunction " }}}
 
 function! s:suite.write_colorscheme03() abort " {{{
@@ -146,6 +150,8 @@ function! s:suite.write_colorscheme03() abort " {{{
     call kolor#export_current_colorscheme_to_jsonfile(jsonfile)
     call kolor#write_colorscheme_from_jsonfile(jsonfile, csdir . '/' . vimfile)
     execute 'colorscheme' color_name . '2'
+    call delete(jsonfile)
+    call delete(csdir . '/' . vimfile)
   endfor
 endfunction " }}}
 
