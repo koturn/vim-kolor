@@ -227,7 +227,7 @@ function! s:to_rgb_list(...) abort " {{{
     if type(a:1) == s:t_number
       return map([a:1 / 65536, a:1 / 256, a:1], 'v:val % 256')
     elseif type(a:1) == s:t_list
-      return [a:1[0], a:1[1], a:1[2]]
+      return a:1[0 : 2]
     elseif type(a:1) == s:t_string
       let str = a:1[0] ==# '#' ? a:1[1 :] : a:1
       if match(str, '\X') != -1
@@ -242,7 +242,7 @@ function! s:to_rgb_list(...) abort " {{{
       throw '[vim-kolor] Invalid argument type, first argument must be a integer, list or color string in case of single argument calling'
     endif
   elseif a:0 == 3
-    return [a:1, a:2, a:3]
+    return a:000
   else
     throw '[vim-kolor] Invalid argument, argument must be one (list or string) or three'
   endif
