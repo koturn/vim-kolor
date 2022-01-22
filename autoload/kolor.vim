@@ -584,9 +584,9 @@ function! s:read_rgbtxt(...) abort " {{{
         \ filter(
         \   map(
         \     readfile(filepath),
-        \     'matchlist(v:val, ''^\s*\(\d\{1,3\}\)\s\+\(\d\{1,3\}\)\s\+\(\d\{1,3\}\)\s\+\(\S\+\)\s*$'')'),
-        \   '!empty(v:val)'),
-        \ "{tolower(v:val[4]): map(v:val[1 : 3], 'str2nr(v:val)')}")
+        \     'split(v:val, ''\s\+'')'),
+        \   "len(v:val) == 4"),
+        \ "extend(dic, {tolower(v:val[3]): map(v:val[: 2], 'str2nr(v:val)')})")
     call extend(guicolor_name_dict, name_rgb_dict, 'error')
   endfor
   return guicolor_name_dict
