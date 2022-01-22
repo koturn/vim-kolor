@@ -531,12 +531,7 @@ function! s:extract_current_highlight() abort " {{{
     endif
     let def = {}
     for mode in ['cterm', 'gui', 'term']
-      for what in ['fg#', 'bg#']
-        let color = synIDattr(id1, what, mode)
-        if color !=# ''
-          call extend(def, {(mode . what[: 1]): color})
-        endif
-      endfor
+      call map(filter(map(['fg#', 'bg#'], '[v:val, synIDattr(id1, v:val, mode)]'), 'v:val[1] !=# ""'), 'extend(def, {(mode . v:val[0][: 1]): v:val[1]})')
       let attrs = map(filter(s:get_available_term_attr(), "synIDattr(id1, v:val, mode) is# '1'"), 'v:val')
       if !empty(attrs)
         call extend(def, {mode: attrs})
@@ -580,15 +575,13 @@ function! s:read_rgbtxt(...) abort " {{{
   let runtime_rgbtxt = $VIMRUNTIME . '/rgb.txt'
   let filepath = a:0 > 0 ? a:1 : get(g:, 'rgb_file', filereadable(runtime_rgbtxt) ? runtime_rgbtxt : s:plugin_base_dir . '/misc/rgb.txt')
   let guicolor_name_dict = {}
-  for name_rgb_dict in map(
+  call map(
         \ filter(
         \   map(
         \     readfile(filepath),
         \     'split(v:val, ''\s\+'')'),
         \   "len(v:val) == 4"),
-        \ "extend(dic, {tolower(v:val[3]): map(v:val[: 2], 'str2nr(v:val)')})")
-    call extend(guicolor_name_dict, name_rgb_dict, 'error')
-  endfor
+        \ "extend(guicolor_name_dict, {tolower(v:val[3]): map(v:val[: 2], 'str2nr(v:val)')}, 'error')")
   return guicolor_name_dict
 endfunction " }}}
 
