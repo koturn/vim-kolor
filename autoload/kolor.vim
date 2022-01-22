@@ -584,8 +584,8 @@ function! s:read_rgbtxt(...) abort " {{{
         \ filter(
         \   map(
         \     readfile(filepath),
-        \     "matchlist(v:val, '^\\s*\\(\\<\\d\\{,3\\}\\)\\s\\+\\(\\<\\d\\{,3\\}\\)\\s\\+\\(\\<\\d\\{,3\\}\\)\\s\\+\\(.*\\)\\s*$')"),
-        \   "match(v:val[4], '\\s') == -1"),
+        \     'matchlist(v:val, ''^\s*\(\d\{1,3\}\)\s\+\(\d\{1,3\}\)\s\+\(\d\{1,3\}\)\s\+\(\S\+\)\s*$'')'),
+        \   '!empty(v:val)'),
         \ "{tolower(v:val[4]): map(v:val[1 : 3], 'str2nr(v:val)')}")
     call extend(guicolor_name_dict, name_rgb_dict, 'error')
   endfor
