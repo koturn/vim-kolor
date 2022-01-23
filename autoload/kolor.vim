@@ -524,9 +524,8 @@ function! s:extract_current_highlight() abort " {{{
   for name1 in s:get_all_highlight_names()
     let id1 = hlID(name1)
     let id2 = synIDtrans(id1)
-    let name2 = synIDattr(id2, 'name')
     if id1 != id2
-      call extend(hldef, {name1: {'link': name2}})
+      call extend(hldef, {name1: {'link': synIDattr(id2, 'name')}})
       continue
     endif
     let def = {}
